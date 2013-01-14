@@ -60,27 +60,27 @@ class Suggestion(db.Model):
   suggestion = db.StringProperty()
   created = db.DateTimeProperty(auto_now_add=True)
   when = db.StringProperty()
-  
-  
+
+
 def _unique_user(user):
   """
   Creates a unique string by using an increasing
   counter sharded per user. The resulting string
   is hashed to keep the users email address private.
-  
+
   Args:
      The currently logged in user.
-     
+
   Returns:
      A hashed unique value based on the user
      and the associated incremented Contributor.count.
   """
   email = user.email()
- 
+
   def txn():
     contributor = Contributor.get_by_key_name(email)
     if contributor == None:
-      contributor = Contributor(key_name=email) 
+      contributor = Contributor(key_name=email)
     contributor.count += 1
     contributor.put()
     return contributor.count
@@ -89,17 +89,17 @@ def _unique_user(user):
 
   return hashlib.md5(email + '|' + str(count)).hexdigest()
 
-  
+
 def whenfromcreated(created):
   """
   Create a unique 'when' property value based on the
   time the entity was created.
-  
+
   Args:
     created:  datetime the entity was created.
-  
+
   Returns:
-    A unique value that will be ordered by 
+    A unique value that will be ordered by
     entity creation time.
   """
   return created.isoformat()[0:19] + '|' + _unique_user(users.get_current_user())
@@ -110,13 +110,13 @@ class SuggestionHandler(webapp.RequestHandler):
   Handles the creation of a single Suggestion, and the display
   of suggestions broken into PAGESIZE pages.
   """
-  
+
   @login_required
   def get(self):
     bookmark = self.request.get('bookmark')
     next = None
     if bookmark:
-      query = Suggestion.gql('WHERE when <= :bookmark ORDER BY when DESC', 
+      query = Suggestion.gql('WHERE when <= :bookmark ORDER BY when DESC',
         bookmark=bookmark)
       suggestions = query.fetch(PAGESIZE+1)
     else:
@@ -124,8 +124,8 @@ class SuggestionHandler(webapp.RequestHandler):
     if len(suggestions) == PAGESIZE+1:
       next = suggestions[-1].when
       suggestions = suggestions[:PAGESIZE]
-      
-    template_values = {'next': next, 'suggestions': suggestions}    
+
+    template_values = {'next': next, 'suggestions': suggestions}
     template_file = os.path.join(os.path.dirname(__file__), 'suggestion.html')
     self.response.out.write(template.render(template_file, template_values))
 
@@ -133,9 +133,9 @@ class SuggestionHandler(webapp.RequestHandler):
     now = datetime.datetime.now()
     when = whenfromcreated(now)
     s = Suggestion(
-      suggestion = self.request.get('suggestion'), 
-      when=when, 
-      created=now)        
+      suggestion = self.request.get('suggestion'),
+      when=when,
+      created=now)
     s.put()
 
     self.redirect('/unique/')
@@ -146,12 +146,12 @@ class SuggestionPopulate(webapp.RequestHandler):
     now = datetime.datetime.now()
     for i in range(6):
       s = Suggestion(
-        suggestion = 'Suggestion %d' % i, 
-        created = now, 
+        suggestion = 'Suggestion %d' % i,
+        created = now,
         when = whenfromcreated(now))
       s.put()
 
-    self.redirect('/unique/')       
+    self.redirect('/unique/')
 
 
 def main():

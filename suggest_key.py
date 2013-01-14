@@ -39,7 +39,7 @@ from google.appengine.ext.webapp.util import login_required
 from time import mktime
 
 
-PAGESIZE = 5  
+PAGESIZE = 5
 
 
 class SuggestionByKey(db.Model):
@@ -48,18 +48,18 @@ class SuggestionByKey(db.Model):
   in the order they were created.
   """
   suggestion = db.StringProperty()
-  created = db.DateTimeProperty(auto_now_add=True)  
+  created = db.DateTimeProperty(auto_now_add=True)
 
 
 def encodebookmark(created, key):
   """
   From the created timestamp and the key for an entity create
   a base64 encoded bookmark that can be used for paging.
-  
+
   Args:
     created:  datetime when the entity was created.
     key:      db.Key() of the entity.
-  
+
   Returns:
     A base64 encoded representation of the values.
   """
@@ -69,15 +69,15 @@ def encodebookmark(created, key):
 
 def decodebookmark(b64bookmark):
   """
-  Takes a string encoded by 'encodebookmark' and reverses 
+  Takes a string encoded by 'encodebookmark' and reverses
   the process.
-  
+
   Args:
     A base64 encoded representation of the values.
-  
+
   Returns:
-    (created, key) where 
-    
+    (created, key) where
+
     created:  datetime when the entity was created.
     key:      db.Key() of the entity.
   """
@@ -85,7 +85,7 @@ def decodebookmark(b64bookmark):
   created = datetime.datetime.fromtimestamp(float(timestamp))
   return created, key
 
-  
+
 class SuggestionByKeyHandler(webapp.RequestHandler):
   """
   Handles the creation of a single Suggestion, and the display
@@ -100,15 +100,15 @@ class SuggestionByKeyHandler(webapp.RequestHandler):
       created, key = decodebookmark(bookmark)
       logging.info('key = %s, created = %s' % (key, created))
       query = SuggestionByKey.gql(
-        ' WHERE created = :created AND __key__ >= :key ORDER BY __key__ ASC', 
+        ' WHERE created = :created AND __key__ >= :key ORDER BY __key__ ASC',
         created = created, key = db.Key(key))
-      suggestions = query.fetch(PAGESIZE+1) 
+      suggestions = query.fetch(PAGESIZE+1)
       logging.info(type(suggestions))
       if len(suggestions) < (PAGESIZE + 1):
         logging.info('Going for more entities since we only got %d' % len(suggestions))
         remainder = PAGESIZE + 1 - len(suggestions)
         query = SuggestionByKey.gql(
-          'WHERE created < :created ORDER BY created DESC, __key__ ASC', 
+          'WHERE created < :created ORDER BY created DESC, __key__ ASC',
           created = created)
         moresuggestions = query.fetch(remainder)
         logging.info('Got %d more' % len(moresuggestions))
@@ -120,17 +120,17 @@ class SuggestionByKeyHandler(webapp.RequestHandler):
     if len(suggestions) == PAGESIZE+1:
       next = encodebookmark(suggestions[-1].created, suggestions[-1].key())
       suggestions = suggestions[:PAGESIZE]
-      
-    template_values = {'next': next, 'suggestions': suggestions}    
+
+    template_values = {'next': next, 'suggestions': suggestions}
     template_file = os.path.join(os.path.dirname(__file__), 'suggestion.html')
     self.response.out.write(template.render(template_file, template_values))
 
   def post(self):
-    s = SuggestionByKey(suggestion = self.request.get('suggestion'))        
+    s = SuggestionByKey(suggestion = self.request.get('suggestion'))
     s.put()
     self.redirect('/key/')
 
-    
+
 class SuggestionByKeyPopulate(webapp.RequestHandler):
   """
   Handles populating the datastore with some sample
@@ -142,7 +142,7 @@ class SuggestionByKeyPopulate(webapp.RequestHandler):
       s = SuggestionByKey(suggestion = 'Suggestion %d' % i, created = now)
       s.put()
     self.redirect('/key/')
-        
+
 
 def main():
   application = webapp.WSGIApplication([
@@ -154,5 +154,3 @@ def main():
 
 if __name__ == '__main__':
   main()
-  
-

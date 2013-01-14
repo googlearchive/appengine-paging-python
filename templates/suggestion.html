@@ -1,13 +1,13 @@
-<!DOCTYPE HTML>
+<!DOCTYPE html>
 <html>
   <head>
-    <title> Suggestions </title>
+    <title>Suggestions</title>
   </head>
   <body>
 
     <ol>
     {% for s in suggestions %}
-        <li>{{ s.suggestion|escape }}
+        <li>{{ s.suggestion }}
     {% endfor %}
     </ol>
 
@@ -28,7 +28,6 @@
          to see how the paging works:</p>
       <p><input type="submit" value="Populate" /></p>
     </form>
-
 
   </body>
 </html>

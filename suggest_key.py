@@ -25,18 +25,14 @@ entity.
 
 import base64
 import datetime
-import hashlib
 import logging
-import os
-import pickle
-import wsgiref.handlers
-
-from google.appengine.ext import webapp
-from google.appengine.ext.webapp import template
-from google.appengine.ext import db
-from google.appengine.api import users
-from google.appengine.ext.webapp.util import login_required
 from time import mktime
+
+from google.appengine.ext import db
+from google.appengine.ext.webapp.util import login_required
+import webapp2
+
+from base_handler import BaseHandler
 
 
 PAGESIZE = 5
@@ -86,7 +82,7 @@ def decodebookmark(b64bookmark):
   return created, key
 
 
-class SuggestionByKeyHandler(webapp.RequestHandler):
+class SuggestionByKeyHandler(BaseHandler):
   """
   Handles the creation of a single Suggestion, and the display
   of suggestions broken into PAGESIZE pages.
@@ -121,9 +117,7 @@ class SuggestionByKeyHandler(webapp.RequestHandler):
       next = encodebookmark(suggestions[-1].created, suggestions[-1].key())
       suggestions = suggestions[:PAGESIZE]
 
-    template_values = {'next': next, 'suggestions': suggestions}
-    template_file = os.path.join(os.path.dirname(__file__), 'suggestion.html')
-    self.response.out.write(template.render(template_file, template_values))
+    self.render_response('suggestion.html', next=next, suggestions=suggestions)
 
   def post(self):
     s = SuggestionByKey(suggestion = self.request.get('suggestion'))
@@ -131,7 +125,7 @@ class SuggestionByKeyHandler(webapp.RequestHandler):
     self.redirect('/key/')
 
 
-class SuggestionByKeyPopulate(webapp.RequestHandler):
+class SuggestionByKeyPopulate(BaseHandler):
   """
   Handles populating the datastore with some sample
   Suggestions to see how the paging works.
@@ -144,13 +138,6 @@ class SuggestionByKeyPopulate(webapp.RequestHandler):
     self.redirect('/key/')
 
 
-def main():
-  application = webapp.WSGIApplication([
-    ('/key/pop/', SuggestionByKeyPopulate),
-    ('/key/', SuggestionByKeyHandler)
-  ], debug=True)
-  wsgiref.handlers.CGIHandler().run(application)
-
-
-if __name__ == '__main__':
-  main()
+APPLICATION = webapp2.WSGIApplication([('/key/pop/', SuggestionByKeyPopulate),
+                                       ('/key/', SuggestionByKeyHandler)],
+                                      debug=True)

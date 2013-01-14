@@ -1,16 +1,20 @@
 application: paging-example
 version: 1
-runtime: python
+runtime: python27
 api_version: 1
+threadsafe: true
 
 handlers:
-
 - url: /
-  static_files: index.html
-  upload: index.html
+  static_files: templates/index.html
+  upload: templates/index\.html
 
 - url: /key/.*
-  script: suggest_key.py
+  script: suggest_key.APPLICATION
 
 - url: /unique/.*
-  script: suggest_unique.py
+  script: suggest_unique.APPLICATION
+
+libraries:
+- name: jinja2
+  version: latest

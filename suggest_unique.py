@@ -26,21 +26,19 @@ all the users of the system.
 
 import datetime
 import hashlib
-import os
-import wsgiref.handlers
 
-from google.appengine.ext import webapp
-from google.appengine.ext.webapp import template
 from google.appengine.ext import db
 from google.appengine.api import users
 from google.appengine.ext.webapp.util import login_required
-from google.appengine.ext.webapp.util import run_wsgi_app
+import webapp2
+
+from base_handler import BaseHandler
 
 
 PAGESIZE = 5
 
 
-class Contributor (db.Model):
+class Contributor(db.Model):
   """
   Contributors are stored with a key of the users email
   address. The 'count' is used as a per user
@@ -105,7 +103,7 @@ def whenfromcreated(created):
   return created.isoformat()[0:19] + '|' + _unique_user(users.get_current_user())
 
 
-class SuggestionHandler(webapp.RequestHandler):
+class SuggestionHandler(BaseHandler):
   """
   Handles the creation of a single Suggestion, and the display
   of suggestions broken into PAGESIZE pages.
@@ -125,9 +123,7 @@ class SuggestionHandler(webapp.RequestHandler):
       next = suggestions[-1].when
       suggestions = suggestions[:PAGESIZE]
 
-    template_values = {'next': next, 'suggestions': suggestions}
-    template_file = os.path.join(os.path.dirname(__file__), 'suggestion.html')
-    self.response.out.write(template.render(template_file, template_values))
+    self.render_response('suggestion.html', next=next, suggestions=suggestions)
 
   def post(self):
     now = datetime.datetime.now()
@@ -141,7 +137,8 @@ class SuggestionHandler(webapp.RequestHandler):
     self.redirect('/unique/')
 
 
-class SuggestionPopulate(webapp.RequestHandler):
+class SuggestionPopulate(BaseHandler):
+
   def post(self):
     now = datetime.datetime.now()
     for i in range(6):
@@ -154,13 +151,6 @@ class SuggestionPopulate(webapp.RequestHandler):
     self.redirect('/unique/')
 
 
-def main():
-  application = webapp.WSGIApplication([
-    ('/unique/pop/', SuggestionPopulate),
-    ('/unique/', SuggestionHandler)
-  ], debug=True)
-  wsgiref.handlers.CGIHandler().run(application)
-
-
-if __name__ == '__main__':
-  main()
+APPLICATION = webapp2.WSGIApplication([('/unique/pop/', SuggestionPopulate),
+                                       ('/unique/', SuggestionHandler)],
+                                      debug=True)

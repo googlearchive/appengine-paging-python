@@ -1,0 +1,19 @@
+application: paging-example
+version: 1
+runtime: python
+api_version: 1
+
+handlers:
+
+- url: /
+  static_files: index.html
+  upload: index.html
+
+- url: /key/.*
+  script: suggestkey.py
+
+- url: /unique/.*
+  script: suggestunique.py
+  
+  
+  

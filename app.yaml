@@ -10,10 +10,7 @@ handlers:
   upload: index.html
 
 - url: /key/.*
-  script: suggestkey.py
+  script: suggest_key.py
 
 - url: /unique/.*
-  script: suggestunique.py
-  
-  
-  
+  script: suggest_unique.py

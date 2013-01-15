@@ -27,7 +27,7 @@ all the users of the system.
 import datetime
 import hashlib
 
-from google.appengine.ext import db
+from google.appengine.ext import ndb
 from google.appengine.api import users
 from google.appengine.ext.webapp.util import login_required
 import webapp2
@@ -35,119 +35,118 @@ import webapp2
 from base_handler import BaseHandler
 
 
-PAGESIZE = 5
+PAGE_SIZE = 5
+TIME_FORMAT = '%Y-%m-%dT%H:%M:%S'
 
 
-class Contributor(db.Model):
+class Contributor(ndb.Model):
+  """Model for storing users that contribute suggestions.
+
+  Contributors are stored with a key of the users email address. The 'count' is
+  used as a per user counter that is incremented each time a user adds a
+  Suggestion and is used to generate a unique property value 'creation_token'
+  that allows paging over suggestions in creation order.
   """
-  Contributors are stored with a key of the users email
-  address. The 'count' is used as a per user
-  counter that is incremented each time a user
-  adds a Suggestion and is used to generate a unique
-  property value 'Suggestion.when' that allows paging
-  over suggestions in creation order.
-  """
-  count = db.IntegerProperty(default=0)
+  count = ndb.IntegerProperty(default=0)
 
+  @classmethod
+  @ndb.transactional
+  def unique_id(cls, email):
+    """Increments contributor suggestion count and creates a unique ID from it
 
-class Suggestion(db.Model):
-  """
-  A suggestion in the suggestion box, which we want to display
-  in the order they were created.
-  """
-  suggestion = db.StringProperty()
-  created = db.DateTimeProperty(auto_now_add=True)
-  when = db.StringProperty()
+    The resulting string is hashed to keep the users email address private.
 
+    Args:
+       email: String; The email of the currently logged in user.
 
-def _unique_user(user):
-  """
-  Creates a unique string by using an increasing
-  counter sharded per user. The resulting string
-  is hashed to keep the users email address private.
-
-  Args:
-     The currently logged in user.
-
-  Returns:
-     A hashed unique value based on the user
-     and the associated incremented Contributor.count.
-  """
-  email = user.email()
-
-  def txn():
-    contributor = Contributor.get_by_key_name(email)
+    Returns:
+       A hashed unique value based on the user and the associated incremented
+         Contributor.count.
+    """
+    contributor = cls.get_by_id(email)
     if contributor == None:
-      contributor = Contributor(key_name=email)
+      contributor = cls(id=email)
     contributor.count += 1
     contributor.put()
-    return contributor.count
 
-  count = db.run_in_transaction(txn)
-
-  return hashlib.md5(email + '|' + str(count)).hexdigest()
+    md5_hash = hashlib.md5('{}|{:d}'.format(email, contributor.count))
+    return md5_hash.hexdigest()
 
 
-def whenfromcreated(created):
+class CreationTokenProperty(ndb.StringProperty):
+  """Custom string property which adds creation token value if not set."""
+
+  def _prepare_for_put(self, entity):
+    """A method to augment the current value if not already set.
+
+    Args:
+      entity: The entity possessing this property.
+    """
+    if not self._has_value(entity):
+      user = users.get_current_user()
+      # This will fail if there is no signed in user
+      unique_id = Contributor.unique_id(user.email())
+
+      now_as_string = datetime.datetime.now().strftime(TIME_FORMAT)
+      value = '{}|{}'.format(now_as_string, unique_id)
+
+      self._store_value(entity, value)
+
+
+class Suggestion(ndb.Model):
+  """Model for storing suggestions contributed to the application.
+
+  A suggestion in the suggestion box, which we want to display in the order
+  they were created.
   """
-  Create a unique 'when' property value based on the
-  time the entity was created.
+  suggestion = ndb.StringProperty()
+  created = ndb.DateTimeProperty(auto_now_add=True)
+  creation_token = CreationTokenProperty()
 
-  Args:
-    created:  datetime the entity was created.
+  @classmethod
+  def populate(cls, num_values=PAGE_SIZE + 1):
+    """Populates dummy suggestions for demonstration purposes.
 
-  Returns:
-    A unique value that will be ordered by
-    entity creation time.
-  """
-  return created.isoformat()[0:19] + '|' + _unique_user(users.get_current_user())
+    Args:
+      num_values: Integer; defaults to PAGE_SIZE + 1. The number of dummy
+        suggestions to add.
+    """
+    suggestions = [cls(suggestion='Suggestion {:d}'.format(i))
+                   for i in range(num_values)]
+    ndb.put_multi(suggestions)
 
 
 class SuggestionHandler(BaseHandler):
   """
   Handles the creation of a single Suggestion, and the display
-  of suggestions broken into PAGESIZE pages.
+  of suggestions broken into PAGE_SIZE pages.
   """
 
   @login_required
   def get(self):
     bookmark = self.request.get('bookmark')
-    next = None
+    query = Suggestion.query().order(-Suggestion.creation_token)
     if bookmark:
-      query = Suggestion.gql('WHERE when <= :bookmark ORDER BY when DESC',
-        bookmark=bookmark)
-      suggestions = query.fetch(PAGESIZE+1)
-    else:
-      suggestions = Suggestion.gql('ORDER BY when DESC').fetch(PAGESIZE+1)
-    if len(suggestions) == PAGESIZE+1:
-      next = suggestions[-1].when
-      suggestions = suggestions[:PAGESIZE]
+      query = query.filter(Suggestion.creation_token <= bookmark)
+    suggestions = query.fetch(PAGE_SIZE + 1)
 
-    self.render_response('suggestion.html', next=next, suggestions=suggestions)
+    next_creation_token = None
+    if len(suggestions) == PAGE_SIZE + 1:
+      next_creation_token = suggestions[-1].creation_token
+      suggestions = suggestions[:PAGE_SIZE]
+
+    self.render_response('suggestion.html', next=next_creation_token,
+                         suggestions=suggestions)
 
   def post(self):
-    now = datetime.datetime.now()
-    when = whenfromcreated(now)
-    s = Suggestion(
-      suggestion = self.request.get('suggestion'),
-      when=when,
-      created=now)
-    s.put()
-
+    Suggestion(suggestion=self.request.get('suggestion')).put()
     self.redirect('/unique/')
 
 
 class SuggestionPopulate(BaseHandler):
 
   def post(self):
-    now = datetime.datetime.now()
-    for i in range(6):
-      s = Suggestion(
-        suggestion = 'Suggestion %d' % i,
-        created = now,
-        when = whenfromcreated(now))
-      s.put()
-
+    Suggestion.populate()
     self.redirect('/unique/')
 
 

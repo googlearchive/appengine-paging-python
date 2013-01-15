@@ -130,12 +130,12 @@ class SuggestionHandler(BaseHandler):
       query = query.filter(Suggestion.creation_token <= bookmark)
     suggestions = query.fetch(PAGE_SIZE + 1)
 
-    next_creation_token = None
+    creation_token = None
     if len(suggestions) == PAGE_SIZE + 1:
-      next_creation_token = suggestions[-1].creation_token
+      creation_token = suggestions[-1].creation_token
       suggestions = suggestions[:PAGE_SIZE]
 
-    self.render_response('suggestion.html', next=next_creation_token,
+    self.render_response('suggestion.html', bookmark=creation_token,
                          suggestions=suggestions)
 
   def post(self):

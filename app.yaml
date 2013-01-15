@@ -9,8 +9,8 @@ handlers:
   static_files: templates/index.html
   upload: templates/index\.html
 
-- url: /key/.*
-  script: suggest_key.APPLICATION
+- url: /cursor/.*
+  script: suggest_cursor.APPLICATION
 
 - url: /unique/.*
   script: suggest_unique.APPLICATION

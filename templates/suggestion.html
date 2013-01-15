@@ -7,7 +7,7 @@
 
     <ol>
     {% for suggestion in suggestions %}
-        <li>{{ suggestion.suggestion }}
+        <li>{{ suggestion.suggestion }}</li>
     {% endfor %}
     </ol>
 
@@ -23,8 +23,9 @@
     <hr>
 
     <form action="pop/" method="post">
-      <p>You can use the button below to add six suggestions with the same timestamp
-         to see how the paging works:</p>
+      <p>You can use the button below to add six suggestions with the same
+         timestamp to see how the paging works:
+      </p>
       <p><input type="submit" value="Populate" /></p>
     </form>
 

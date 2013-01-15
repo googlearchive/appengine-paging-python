@@ -40,106 +40,107 @@ TIME_FORMAT = '%Y-%m-%dT%H:%M:%S'
 
 
 class Contributor(ndb.Model):
-  """Model for storing users that contribute suggestions.
+    """Model for storing users that contribute suggestions.
 
-  Contributors are stored with a key of the users email address. The 'count' is
-  used as a per user counter that is incremented each time a user adds a
-  Suggestion and is used to generate a unique property value 'creation_token'
-  that allows paging over suggestions in creation order.
-  """
-  count = ndb.IntegerProperty(default=0)
-
-  @classmethod
-  @ndb.transactional
-  def unique_id(cls, email):
-    """Increments contributor suggestion count and creates a unique ID from it
-
-    The resulting string is hashed to keep the users email address private.
-
-    Args:
-       email: String; The email of the currently logged in user.
-
-    Returns:
-       A hashed unique value based on the user and the associated incremented
-         Contributor.count.
+    Contributors are stored with a key of the users email address. The 'count'
+    is used as a per user counter that is incremented each time a user adds a
+    Suggestion and is used to generate a unique property value 'creation_token'
+    that allows paging over suggestions in creation order.
     """
-    contributor = cls.get_by_id(email)
-    if contributor == None:
-      contributor = cls(id=email)
-    contributor.count += 1
-    contributor.put()
+    count = ndb.IntegerProperty(default=0)
 
-    md5_hash = hashlib.md5('{}|{:d}'.format(email, contributor.count))
-    return md5_hash.hexdigest()
+    @classmethod
+    @ndb.transactional
+    def unique_id(cls, email):
+        """Increments contributor suggestion count and creates unique ID.
+
+        Uses the contributor email and count to create the unique ID; the
+        resulting string is hashed to keep the user's email address private.
+
+        Args:
+            email: String; The email of the currently logged in user.
+
+        Returns:
+            A hashed unique value based on the user and the associated
+                incremented Contributor.count.
+        """
+        contributor = cls.get_by_id(email)
+        if contributor == None:
+            contributor = cls(id=email)
+        contributor.count += 1
+        contributor.put()
+
+        md5_hash = hashlib.md5('{}|{:d}'.format(email, contributor.count))
+        return md5_hash.hexdigest()
 
 
 class CreationTokenProperty(ndb.StringProperty):
-  """Custom string property which adds creation token value if not set."""
+    """Custom string property which adds creation token value if not set."""
 
-  def _prepare_for_put(self, entity):
-    """A method to augment the current value if not already set.
+    def _prepare_for_put(self, entity):
+        """A method to augment the current value if not already set.
 
-    Args:
-      entity: The entity possessing this property.
-    """
-    if not self._has_value(entity):
-      user = users.get_current_user()
-      # This will fail if there is no signed in user
-      unique_id = Contributor.unique_id(user.email())
+        Args:
+            entity: The entity possessing this property.
+        """
+        if not self._has_value(entity):
+            user = users.get_current_user()
+            # This will fail if there is no signed in user
+            unique_id = Contributor.unique_id(user.email())
 
-      now_as_string = datetime.datetime.now().strftime(TIME_FORMAT)
-      value = '{}|{}'.format(now_as_string, unique_id)
+            now_as_string = datetime.datetime.now().strftime(TIME_FORMAT)
+            value = '{}|{}'.format(now_as_string, unique_id)
 
-      self._store_value(entity, value)
+            self._store_value(entity, value)
 
 
 class Suggestion(SuggestionByCursor):
-  """Model for storing suggestions contributed to the application.
+    """Model for storing suggestions contributed to the application.
 
-  We want to display these in the order they were created. The properties
+    We want to display these in the order they were created. The properties
 
-      suggestion - StringProperty
-      created - DateTimeProperty(auto_now_add=True)
+        suggestion - StringProperty
+        created - DateTimeProperty(auto_now_add=True)
 
-  are inherited from suggest_cursor.SuggestionByCursor and the class method
-  populate is as well. This method adds dummy suggestions for demonstration
-  purposes.
-  """
-  creation_token = CreationTokenProperty()
+    are inherited from suggest_cursor.SuggestionByCursor and the class method
+    populate is as well. This method adds dummy suggestions for demonstration
+    purposes.
+    """
+    creation_token = CreationTokenProperty()
 
 
 class SuggestionHandler(BaseHandler):
-  """
-  Handles the creation of a single Suggestion, and the display
-  of suggestions broken into PAGE_SIZE pages.
-  """
+    """
+    Handles the creation of a single Suggestion, and the display
+    of suggestions broken into PAGE_SIZE pages.
+    """
 
-  @login_required
-  def get(self):
-    bookmark = self.request.get('bookmark')
-    query = Suggestion.query().order(-Suggestion.creation_token)
-    if bookmark:
-      query = query.filter(Suggestion.creation_token <= bookmark)
-    suggestions = query.fetch(PAGE_SIZE + 1)
+    @login_required
+    def get(self):
+        bookmark = self.request.get('bookmark')
+        query = Suggestion.query().order(-Suggestion.creation_token)
+        if bookmark:
+            query = query.filter(Suggestion.creation_token <= bookmark)
+        suggestions = query.fetch(PAGE_SIZE + 1)
 
-    creation_token = None
-    if len(suggestions) == PAGE_SIZE + 1:
-      creation_token = suggestions[-1].creation_token
-      suggestions = suggestions[:PAGE_SIZE]
+        creation_token = None
+        if len(suggestions) == PAGE_SIZE + 1:
+            creation_token = suggestions[-1].creation_token
+            suggestions = suggestions[:PAGE_SIZE]
 
-    self.render_response('suggestion.html', bookmark=creation_token,
-                         suggestions=suggestions)
+        self.render_response('suggestion.html', bookmark=creation_token,
+                             suggestions=suggestions)
 
-  def post(self):
-    Suggestion(suggestion=self.request.get('suggestion')).put()
-    self.redirect('/unique/')
+    def post(self):
+        Suggestion(suggestion=self.request.get('suggestion')).put()
+        self.redirect('/unique/')
 
 
 class SuggestionPopulate(BaseHandler):
 
-  def post(self):
-    Suggestion.populate()
-    self.redirect('/unique/')
+    def post(self):
+        Suggestion.populate()
+        self.redirect('/unique/')
 
 
 APPLICATION = webapp2.WSGIApplication([('/unique/pop/', SuggestionPopulate),

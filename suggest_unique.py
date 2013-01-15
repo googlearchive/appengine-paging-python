@@ -32,6 +32,7 @@ from google.appengine.ext.webapp.util import login_required
 import webapp2
 
 from base_handler import BaseHandler
+from suggest_cursor import SuggestionByCursor
 
 
 PAGE_SIZE = 5
@@ -92,27 +93,19 @@ class CreationTokenProperty(ndb.StringProperty):
       self._store_value(entity, value)
 
 
-class Suggestion(ndb.Model):
+class Suggestion(SuggestionByCursor):
   """Model for storing suggestions contributed to the application.
 
-  A suggestion in the suggestion box, which we want to display in the order
-  they were created.
+  We want to display these in the order they were created. The properties
+
+      suggestion - StringProperty
+      created - DateTimeProperty(auto_now_add=True)
+
+  are inherited from suggest_cursor.SuggestionByCursor and the class method
+  populate is as well. This method adds dummy suggestions for demonstration
+  purposes.
   """
-  suggestion = ndb.StringProperty()
-  created = ndb.DateTimeProperty(auto_now_add=True)
   creation_token = CreationTokenProperty()
-
-  @classmethod
-  def populate(cls, num_values=PAGE_SIZE + 1):
-    """Populates dummy suggestions for demonstration purposes.
-
-    Args:
-      num_values: Integer; defaults to PAGE_SIZE + 1. The number of dummy
-        suggestions to add.
-    """
-    suggestions = [cls(suggestion='Suggestion {:d}'.format(i))
-                   for i in range(num_values)]
-    ndb.put_multi(suggestions)
 
 
 class SuggestionHandler(BaseHandler):

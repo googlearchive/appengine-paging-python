@@ -31,56 +31,66 @@ PAGE_SIZE = 5
 
 
 class SuggestionByCursor(ndb.Model):
-  """Model for storing suggestions contributed to the application.
+    """Model for storing suggestions contributed to the application.
 
-  Suggestions will be displayed in the order they were created.
-  """
-  suggestion = ndb.StringProperty()
-  created = ndb.DateTimeProperty(auto_now_add=True)
+    Suggestions will be displayed in the order they were created.
+    """
+    suggestion = ndb.StringProperty()
+    created = ndb.DateTimeProperty(auto_now_add=True)
+
+    @classmethod
+    def populate(cls, num_values=PAGE_SIZE + 1):
+        """Populates dummy suggestions for demonstration purposes.
+
+        Args:
+            num_values: Integer; defaults to PAGE_SIZE + 1. The number of dummy
+                suggestions to add.
+        """
+        suggestions = [cls(suggestion='Suggestion {:d}'.format(i))
+                       for i in range(num_values)]
+        ndb.put_multi(suggestions)
 
 
 class SuggestionByCursorHandler(BaseHandler):
-  """
-  Handles the creation of a single Suggestion, and the display
-  of suggestions broken into PAGE_SIZE pages.
-  """
+    """
+    Handles the creation of a single Suggestion, and the display
+    of suggestions broken into PAGE_SIZE pages.
+    """
 
-  @login_required
-  def get(self):
-    cursor = None
-    bookmark = self.request.get('bookmark')
-    if bookmark:
-      cursor = ndb.Cursor.from_websafe_string(bookmark)
+    @login_required
+    def get(self):
+        cursor = None
+        bookmark = self.request.get('bookmark')
+        if bookmark:
+            cursor = ndb.Cursor.from_websafe_string(bookmark)
 
-    query = SuggestionByCursor.query().order(-SuggestionByCursor.created)
-    suggestions, next_cursor, more = query.fetch_page(PAGE_SIZE,
-                                                      start_cursor=cursor)
+        query = SuggestionByCursor.query().order(-SuggestionByCursor.created)
+        suggestions, next_cursor, more = query.fetch_page(PAGE_SIZE,
+                                                          start_cursor=cursor)
 
-    next_bookmark = None
-    if more:
-      next_bookmark = next_cursor.to_websafe_string()
+        next_bookmark = None
+        if more:
+            next_bookmark = next_cursor.to_websafe_string()
 
-    self.render_response('suggestion.html', bookmark=next_bookmark,
-                         suggestions=suggestions)
+        self.render_response('suggestion.html', bookmark=next_bookmark,
+                             suggestions=suggestions)
 
-  def post(self):
-    SuggestionByCursor(suggestion=self.request.get('suggestion')).put()
-    self.redirect('/cursor/')
+    def post(self):
+        SuggestionByCursor(suggestion=self.request.get('suggestion')).put()
+        self.redirect('/cursor/')
 
 
 class SuggestionByCursorPopulate(BaseHandler):
-  """
-  Handles populating the datastore with some sample
-  Suggestions to see how the paging works.
-  """
-  def post(self):
-    suggestions = [SuggestionByCursor(suggestion='Suggestion {:d}'.format(i))
-                   for i in range(6)]
-    ndb.put_multi(suggestions)
-    self.redirect('/cursor/')
+    """
+    Handles populating the datastore with some sample
+    Suggestions to see how the paging works.
+    """
+    def post(self):
+        SuggestionByCursor.populate()
+        self.redirect('/cursor/')
 
 
 APPLICATION = webapp2.WSGIApplication([
-    ('/cursor/pop/', SuggestionByCursorPopulate),
-    ('/cursor/', SuggestionByCursorHandler)],
-    debug=True)
+        ('/cursor/pop/', SuggestionByCursorPopulate),
+        ('/cursor/', SuggestionByCursorHandler)],
+        debug=True)

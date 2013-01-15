@@ -20,8 +20,8 @@ A simple Suggestion Box application that demonstrates paging by using cursors
 provided for queries.
 """
 
+
 from google.appengine.ext import ndb
-from google.appengine.ext.webapp.util import login_required
 import webapp2
 
 from base_handler import BaseHandler
@@ -52,13 +52,19 @@ class SuggestionByCursor(ndb.Model):
 
 
 class SuggestionByCursorHandler(BaseHandler):
-    """
-    Handles the creation of a single Suggestion, and the display
-    of suggestions broken into PAGE_SIZE pages.
+    """Handles the insert of a suggestion and display of existing suggestions.
+
+    The GET handler is intended for general display and paging and the POST
+    handler is used for inserting new suggestions.
     """
 
-    @login_required
     def get(self):
+        """Handles GET requests to the paging by cursors sub-application.
+
+        If there is a bookmark value in the query parameters, uses it to create
+        a cursor and page using it. Includes up to PAGE_SIZE results and a link
+        to the next page of results if any more exist.
+        """
         cursor = None
         bookmark = self.request.get('bookmark')
         if bookmark:
@@ -76,16 +82,20 @@ class SuggestionByCursorHandler(BaseHandler):
                              suggestions=suggestions)
 
     def post(self):
+        """Handles POST requests for inserting a single suggestion."""
         SuggestionByCursor(suggestion=self.request.get('suggestion')).put()
         self.redirect('/cursor/')
 
 
 class SuggestionByCursorPopulate(BaseHandler):
+    """Populates the datastore with some sample suggestions
+
+    Provided so end users can pre-populate with PAGE_SIZE + 1 entities to see
+    how cursor-based paging works.
     """
-    Handles populating the datastore with some sample
-    Suggestions to see how the paging works.
-    """
+
     def post(self):
+        """Handles POST requests and adds sample suggestions."""
         SuggestionByCursor.populate()
         self.redirect('/cursor/')
 

@@ -16,12 +16,11 @@
 
 """Suggestion Box - An example paging application.
 
-A simple Suggestion Box application that demonstrates
-paging by creating a unique value for each suggestion. The
-uniqueness is created by sharding counters across
-all the users of the system.
-
+A simple Suggestion Box application that demonstrates paging by creating a
+unique value for each suggestion. The uniqueness is created by sharding
+counters across all the users of the system.
 """
+
 
 import datetime
 import hashlib
@@ -110,13 +109,21 @@ class Suggestion(SuggestionByCursor):
 
 
 class SuggestionHandler(BaseHandler):
-    """
-    Handles the creation of a single Suggestion, and the display
-    of suggestions broken into PAGE_SIZE pages.
+    """Handles the insert of a suggestion and display of existing suggestions.
+
+    The GET handler is intended for general display and paging and the POST
+    handler is used for inserting new suggestions.
     """
 
     @login_required
     def get(self):
+        """Handles GET requests to the paging by unique values sub-application.
+
+        If there is a bookmark value in the query parameters, uses it to query
+        for suggestions by limiting to creation tokens less than the bookmark.
+        Includes up to PAGE_SIZE results and a link to the next page of results
+        if any more exist.
+        """
         bookmark = self.request.get('bookmark')
         query = Suggestion.query().order(-Suggestion.creation_token)
         if bookmark:
@@ -132,13 +139,20 @@ class SuggestionHandler(BaseHandler):
                              suggestions=suggestions)
 
     def post(self):
+        """Handles POST requests for inserting a single suggestion."""
         Suggestion(suggestion=self.request.get('suggestion')).put()
         self.redirect('/unique/')
 
 
 class SuggestionPopulate(BaseHandler):
+    """Populates the datastore with some sample suggestions
+
+    Provided so end users can pre-populate with PAGE_SIZE + 1 entities to see
+    how unique value-based paging works.
+    """
 
     def post(self):
+        """Handles POST requests and adds sample suggestions."""
         Suggestion.populate()
         self.redirect('/unique/')
 

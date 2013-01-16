@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Suggestions</title>
+  </head>
+  <body>
+
+    <ol>
+    {% for suggestion in suggestions %}
+        <li>{{ suggestion.suggestion }}</li>
+    {% endfor %}
+    </ol>
+
+    {% if bookmark %}
+      <p><a href="?bookmark={{ bookmark }}">Next</a></p>
+    {% endif %}
+
+    <form action="#" method="post">
+      <label>Suggestion: <input type="text" name="suggestion" value="" />
+      <p><input type="submit" value="Add" /></p>
+    </form>
+
+    <hr>
+
+    <form action="pop/" method="post">
+      <p>You can use the button below to add six suggestions with the same
+         timestamp to see how the paging works:
+      </p>
+      <p><input type="submit" value="Populate" /></p>
+    </form>
+
+  </body>
+</html>

@@ -1,3 +1,10 @@
+![status: inactive](https://img.shields.io/badge/status-inactive-red.svg)
+
+This project is no longer actively developed or maintained.
+
+For new work on this check out [Python Query Cursors](https://cloud.google.com/appengine/docs/python/datastore/queries#Python_Query_cursors)
+
+
 # Suggestion Box
 
 "Suggestion Box" is an example application that covers two different
